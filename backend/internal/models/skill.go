@@ -7,11 +7,12 @@ import (
 )
 
 type Skill struct {
-	ID          primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Name        string             `json:"name,omitempty" bson:"name,omitempty"`
-	Category    string             `json:"category,omitempty" bson:"category,omitempty"`
-	Description string             `json:"description" bson:"description"`
-	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
+	ID          primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
+	Ancestors   []primitive.ObjectID `json:"ancestors" bson:"ancestors"`
+	Name        string               `json:"name,omitempty" bson:"name,omitempty"`
+	Category    string               `json:"category,omitempty" bson:"category,omitempty"`
+	Description string               `json:"description" bson:"description"`
+	CreatedAt   time.Time            `json:"created_at" bson:"created_at"`
 
 	// Pointer allows this to be null
 	ParentID *primitive.ObjectID `json:"parent_id" bson:"parent_id"`

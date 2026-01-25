@@ -19,6 +19,7 @@ func SetupRoutes(app *fiber.App, goalHandler *handlers.GoalHandler, skillHandler
 	api.Get("/skills", skillHandler.GetSkills)
 	api.Post("/skills", skillHandler.CreateSkill)
 	api.Get("/skills/:id", skillHandler.GetSkill)
+	api.Get("/skills/:id/tree", skillHandler.GetSkillTree)
 	api.Put("/skills/:id", skillHandler.UpdateSkill)
 	api.Delete("/skills/:id", skillHandler.DeleteSkill)
 

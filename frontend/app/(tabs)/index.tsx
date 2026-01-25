@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // IMPORTANT: Change this IP address to match your setup
 // For Android Emulator: use 10.0.2.2
@@ -28,142 +29,151 @@ interface Goal {
   created_at: string;
 }
 
+// API functions
+const fetchGoals = async (): Promise<Goal[]> => {
+  const response = await axios.get<Goal[]>(GOALS_API_URL);
+  return response.data;
+};
+
+const createGoalApi = async (goal: Partial<Goal>): Promise<Goal> => {
+  const response = await axios.post<Goal>(GOALS_API_URL, goal);
+  return response.data;
+};
+
+const updateGoalApi = async (goal: Goal): Promise<Goal> => {
+  const response = await axios.put<Goal>(`${GOALS_API_URL}/${goal.id}`, goal);
+  return response.data;
+};
+
+const deleteGoalApi = async (goalId: string): Promise<void> => {
+  await axios.delete(`${GOALS_API_URL}/${goalId}`);
+};
+
 export default function MasteryPathScreen() {
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
-  // Fetch goals when the screen loads
-  useEffect(() => {
-    fetchGoals();
-  }, []);
+  // Query: Fetch all goals
+  const { data: goals = [], isLoading, error } = useQuery({
+    queryKey: ['goals'],
+    queryFn: fetchGoals,
+  });
 
-  // GET: Fetch all goals from the backend
-  const fetchGoals = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get<Goal[]>(GOALS_API_URL);
-      setGoals(response.data);
-      console.log('Goals fetched:', response.data);
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-      Alert.alert('Error', 'Failed to fetch goals. Make sure your backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // POST: Create a new goal
-  const createGoal = async () => {
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a goal title');
-      return;
-    }
-
-    try {
-      const newGoal = {
-        title: title,
-        description: description,
-        completed: false,
-      };
-
-      const response = await axios.post<Goal>(GOALS_API_URL, newGoal);
-      setGoals([...goals, response.data]);
+  // Mutation: Create
+  const createMutation = useMutation({
+    mutationFn: createGoalApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
       setTitle('');
       setDescription('');
       Alert.alert('Success', 'Goal created!');
-    } catch (error) {
-      console.error('Error creating goal:', error);
-      Alert.alert('Error', 'Failed to create goal');
-    }
-  };
+    },
+    onError: () => Alert.alert('Error', 'Failed to create goal'),
+  });
 
-  // PUT: Update an existing goal
-  const updateGoal = async () => {
-    if (!editingGoal) return;
-
-    try {
-      const updatedGoal = {
-        title: title,
-        description: description,
-        completed: editingGoal.completed,
-      };
-
-      const response = await axios.put<Goal>(
-        `${GOALS_API_URL}/${editingGoal.id}`,
-        updatedGoal
-      );
-
-      setGoals(goals.map(goal =>
-        goal.id === editingGoal.id ? response.data : goal
-      ));
-
+  // Mutation: Update
+  const updateMutation = useMutation({
+    mutationFn: updateGoalApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
       setTitle('');
       setDescription('');
       setEditingGoal(null);
       Alert.alert('Success', 'Goal updated!');
-    } catch (error) {
-      console.error('Error updating goal:', error);
-      Alert.alert('Error', 'Failed to update goal');
-    }
-  };
+    },
+    onError: () => Alert.alert('Error', 'Failed to update goal'),
+  });
 
-  // DELETE: Delete a goal
-  const deleteGoal = async (goalId: string) => {
-    try {
-      await axios.delete(`${GOALS_API_URL}/${goalId}`);
-      setGoals(goals.filter(goal => goal.id !== goalId));
+  // Mutation: Delete
+  const deleteMutation = useMutation({
+    mutationFn: deleteGoalApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
       Alert.alert('Success', 'Goal deleted!');
-    } catch (error) {
-      console.error('Error deleting goal:', error);
-      Alert.alert('Error', 'Failed to delete goal');
-    }
-  };
+    },
+    onError: () => Alert.alert('Error', 'Failed to delete goal'),
+  });
 
-  // Toggle goal completion status
-  const toggleComplete = async (goal: Goal) => {
-    try {
-      const updatedGoal = {
-        ...goal,
-        completed: !goal.completed,
-      };
+  // Mutation: Toggle Complete (with Optimistic Update)
+  const toggleMutation = useMutation({
+    mutationFn: updateGoalApi,
+    onMutate: async (updatedGoal) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['goals'] });
 
-      const response = await axios.put<Goal>(
-        `${GOALS_API_URL}/${goal.id}`,
-        updatedGoal
+      // Snapshot the previous value
+      const previousGoals = queryClient.getQueryData<Goal[]>(['goals']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<Goal[]>(['goals'], (old) =>
+        old?.map((g) => (g.id === updatedGoal.id ? updatedGoal : g))
       );
 
-      setGoals(goals.map(g =>
-        g.id === goal.id ? response.data : g
-      ));
-    } catch (error) {
-      console.error('Error toggling goal:', error);
+      // Return a context with the snapshotted value
+      return { previousGoals };
+    },
+    onError: (_err, _updatedGoal, context) => {
+      // Rollback on error
+      queryClient.setQueryData(['goals'], context?.previousGoals);
       Alert.alert('Error', 'Failed to update goal');
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+
+  const handleCreateGoal = () => {
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a goal title');
+      return;
     }
+    createMutation.mutate({
+      title,
+      description,
+      completed: false,
+    });
   };
 
-  // Start editing a goal
+  const handleUpdateGoal = () => {
+    if (!editingGoal) return;
+    updateMutation.mutate({
+      ...editingGoal,
+      title,
+      description,
+    });
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    deleteMutation.mutate(goalId);
+  };
+
+  const handleToggleComplete = (goal: Goal) => {
+    toggleMutation.mutate({
+      ...goal,
+      completed: !goal.completed,
+    });
+  };
+
   const startEditing = (goal: Goal) => {
     setEditingGoal(goal);
     setTitle(goal.title);
     setDescription(goal.description);
   };
 
-  // Cancel editing
   const cancelEditing = () => {
     setEditingGoal(null);
     setTitle('');
     setDescription('');
   };
 
-  // Render a single goal item
   const renderGoal = ({ item }: { item: Goal }) => (
     <View style={styles.goalItem}>
       <TouchableOpacity
         style={styles.goalContent}
-        onPress={() => toggleComplete(item)}
+        onPress={() => handleToggleComplete(item)}
       >
         <View style={styles.checkbox}>
           {item.completed && <View style={styles.checkboxChecked} />}
@@ -190,13 +200,22 @@ export default function MasteryPathScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => deleteGoal(item.id)}
+          onPress={() => handleDeleteGoal(item.id)}
         >
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.header}>MasteryPath</Text>
+        <Text style={styles.emptyText}>Failed to load goals. Make sure your backend is running.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -222,7 +241,7 @@ export default function MasteryPathScreen() {
             <>
               <TouchableOpacity
                 style={[styles.button, styles.updateButton]}
-                onPress={updateGoal}
+                onPress={handleUpdateGoal}
               >
                 <Text style={styles.buttonText}>Update Goal</Text>
               </TouchableOpacity>
@@ -236,7 +255,7 @@ export default function MasteryPathScreen() {
           ) : (
             <TouchableOpacity
               style={styles.button}
-              onPress={createGoal}
+              onPress={handleCreateGoal}
             >
               <Text style={styles.buttonText}>Add Goal</Text>
             </TouchableOpacity>
@@ -245,7 +264,7 @@ export default function MasteryPathScreen() {
       </View>
 
       {/* Goal List */}
-      {loading ? (
+      {isLoading ? (
         <ActivityIndicator size="large" color="#007AFF" />
       ) : (
         <FlatList
