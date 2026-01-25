@@ -730,6 +730,50 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/skills/{id}/tree": {
+            "get": {
+                "description": "Get a skill and all its descendants using the ancestors array",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "skills"
+                ],
+                "summary": "Get skill tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Root Skill ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Skill"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -784,6 +828,12 @@ const docTemplate = `{
         "models.Skill": {
             "type": "object",
             "properties": {
+                "ancestors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "category": {
                     "type": "string"
                 },
@@ -808,6 +858,12 @@ const docTemplate = `{
         "models.SkillPopulated": {
             "type": "object",
             "properties": {
+                "ancestors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "category": {
                     "type": "string"
                 },
