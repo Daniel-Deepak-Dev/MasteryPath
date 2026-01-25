@@ -14,3 +14,4 @@ dist/
 build/
 *.exe
 *.o
+.agent/
