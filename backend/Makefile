@@ -15,3 +15,7 @@ build:
 # Run all go generate commands
 generate:
 	go generate ./...
+
+# Seed the database with mock data
+seed:
+	go run scripts/seed.go
