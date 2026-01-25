@@ -1,0 +1,552 @@
+basePath: /api/v1
+definitions:
+  models.Goal:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+    type: object
+  models.ProgressItem:
+    properties:
+      achieved:
+        type: boolean
+      comments:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parent_skill_id:
+        type: string
+      weight_percent:
+        description: Computed Field (We add this tag so it shows in JSON, but we don't
+          save it to DB)
+        type: number
+      weightage:
+        description: We store the raw weightage (1, 3, 5, 8, 13, 21) only
+        type: integer
+    type: object
+  models.Skill:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parent_id:
+        description: Pointer allows this to be null
+        type: string
+    type: object
+  models.SkillPopulated:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parent_data:
+        $ref: '#/definitions/models.Skill'
+      parent_id:
+        description: Pointer allows this to be null
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the API for the MasteryPath task manager.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: MasteryPath API
+  version: "1.0"
+paths:
+  /goals:
+    get:
+      consumes:
+      - application/json
+      description: Get all goals
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Goal'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List goals
+      tags:
+      - goals
+    post:
+      consumes:
+      - application/json
+      description: Create a new goal
+      parameters:
+      - description: Goal object
+        in: body
+        name: goal
+        required: true
+        schema:
+          $ref: '#/definitions/models.Goal'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Goal'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a goal
+      tags:
+      - goals
+  /goals/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a goal by ID
+      parameters:
+      - description: Goal ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a goal
+      tags:
+      - goals
+    get:
+      consumes:
+      - application/json
+      description: Get a single goal by ID
+      parameters:
+      - description: Goal ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Goal'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a goal
+      tags:
+      - goals
+    put:
+      consumes:
+      - application/json
+      description: Update an existing goal by ID
+      parameters:
+      - description: Goal ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Goal object
+        in: body
+        name: goal
+        required: true
+        schema:
+          $ref: '#/definitions/models.Goal'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Goal'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a goal
+      tags:
+      - goals
+  /progress:
+    post:
+      consumes:
+      - application/json
+      description: Create a new progress item for a skill
+      parameters:
+      - description: ProgressItem object
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProgressItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ProgressItem'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a progress item
+      tags:
+      - progress
+  /progress/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a progress item by ID
+      parameters:
+      - description: Progress Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a progress item
+      tags:
+      - progress
+    put:
+      consumes:
+      - application/json
+      description: Update an existing progress item by ID
+      parameters:
+      - description: Progress Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ProgressItem object
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProgressItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a progress item
+      tags:
+      - progress
+  /progress/skill/{skillId}:
+    get:
+      consumes:
+      - application/json
+      description: Get all progress items for a specific skill and calculate percentages
+      parameters:
+      - description: Skill ID
+        in: path
+        name: skillId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ProgressItem'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List progress items by skill
+      tags:
+      - progress
+  /skills:
+    get:
+      consumes:
+      - application/json
+      description: Get all skills
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Skill'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List skills
+      tags:
+      - skills
+    post:
+      consumes:
+      - application/json
+      description: Create a new skill (parent or child)
+      parameters:
+      - description: Skill object
+        in: body
+        name: skill
+        required: true
+        schema:
+          $ref: '#/definitions/models.Skill'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Skill'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a skill
+      tags:
+      - skills
+  /skills/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a skill by ID
+      parameters:
+      - description: Skill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a skill
+      tags:
+      - skills
+    get:
+      consumes:
+      - application/json
+      description: Get a single skill by ID with parent data populated
+      parameters:
+      - description: Skill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SkillPopulated'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a skill
+      tags:
+      - skills
+    put:
+      consumes:
+      - application/json
+      description: Update an existing skill by ID
+      parameters:
+      - description: Skill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Skill object
+        in: body
+        name: skill
+        required: true
+        schema:
+          $ref: '#/definitions/models.Skill'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a skill
+      tags:
+      - skills
+swagger: "2.0"
