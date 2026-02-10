@@ -54,18 +54,20 @@ func main() {
 	goalService := services.NewGoalService(db.Collection("goals"))
 	skillService := services.NewSkillService(db.Collection("skills"), db.Collection("metadata"), db.Collection("progress"))
 	progressService := services.NewProgressService(db.Collection("progress"))
+	analyticsService := services.NewAnalyticsService(db.Collection("progress"))
 
 	// 4. Create Handlers (thin HTTP layer)
 	goalHandler := handlers.NewGoalHandler(goalService)
 	skillHandler := handlers.NewSkillHandler(skillService)
 	progressHandler := handlers.NewProgressHandler(progressService)
+	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// 5. Setup Fiber App
 	app := fiber.New()
 	app.Use(cors.New())
 
 	// 6. Setup Routes
-	routes.SetupRoutes(app, goalHandler, skillHandler, progressHandler)
+	routes.SetupRoutes(app, goalHandler, skillHandler, progressHandler, analyticsHandler)
 
 	// Health Check
 	app.Get("/health", func(c *fiber.Ctx) error {

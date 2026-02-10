@@ -6,9 +6,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRoutes(app *fiber.App, goalHandler *handlers.GoalHandler, skillHandler *handlers.SkillHandler, progressHandler *handlers.ProgressHandler) {
+func SetupRoutes(app *fiber.App, goalHandler *handlers.GoalHandler, skillHandler *handlers.SkillHandler, progressHandler *handlers.ProgressHandler, analyticsHandler *handlers.AnalyticsHandler) {
 	api := app.Group("/api")
 
+	// Analytics Routes
+	api.Get("/analytics/contributions", analyticsHandler.GetContributionData)
+
+	// Goal Routes
 	api.Get("/goals", goalHandler.GetGoals)
 	api.Post("/goals", goalHandler.CreateGoal)
 	api.Get("/goals/:id", goalHandler.GetGoal)

@@ -6,6 +6,8 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +15,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { fetchDashboard, DashboardSkill } from '@/services/api';
 import SkillCard from '@/components/skill-card';
+import { ContributionGraph } from '@/components/ContributionGraph'; // Add to imports
+import axios from 'axios'; // Assuming axios is used for these new queries
+
+// Define API_URL if not already defined globally or in a config file
+// For demonstration, using a placeholder. In a real app, this would come from env vars or a config.
+const API_URL = 'http://localhost:3000/api'; // Placeholder API URL
 
 export default function DashboardScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -29,9 +37,33 @@ export default function DashboardScreen() {
     queryFn: fetchDashboard,
   });
 
+  // 1. Fetch Goals
+  const { data: goals = [], refetch: refetchGoals } = useQuery({
+    queryKey: ['goals'],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/goals`);
+      return response.data;
+    },
+  });
+
+  // 1b. Fetch Contribution Data
+  const { data: contributions = [] } = useQuery({
+    queryKey: ['contributions'],
+    queryFn: async () => {
+      try {
+         const response = await axios.get(`${API_URL}/analytics/contributions`);
+         return response.data || [];
+      } catch (e) {
+         console.log('Error fetching contributions:', e);
+         return [];
+      }
+    },
+  });
+
   const onRefresh = useCallback(() => {
     refetch();
-  }, [refetch]);
+    refetchGoals(); // Also refresh goals
+  }, [refetch, refetchGoals]);
 
   const renderSkillCard = ({ item }: { item: DashboardSkill }) => (
     <SkillCard skill={item} />
@@ -59,48 +91,39 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={skills}
-        renderItem={renderSkillCard}
-        keyExtractor={(item) => item.id}
+      <ScrollView
+        style={styles.container}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
+            refreshing={isLoading}
             onRefresh={onRefresh}
-            tintColor={colors.tint}
             colors={[colors.tint]}
           />
         }
-        ListHeaderComponent={
-          <View style={styles.headerSection}>
+      >
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <View>
             <Text style={[styles.headerTitle, { color: colors.text }]}>MasteryPath</Text>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
               Your learning journey
             </Text>
+          </View>
+          {/* Assuming 'router' and 'Ionicons' are imported or globally available */}
+          {/* <TouchableOpacity onPress={() => router.push('/modal')} style={styles.addButton}>
+            <Ionicons name="add" size={24} color="#FFF" />
+          </TouchableOpacity> */}
+        </View>
 
-            {/* Stats Row */}
-            {skills.length > 0 && (
-              <View style={styles.statsRow}>
-                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.statNumber, { color: colors.tint }]}>{skills.length}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Skill Domains</Text>
-                </View>
-                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.statNumber, { color: colors.tint }]}>
-                    {skills.reduce((sum, s) => sum + s.sub_skills.length, 0)}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Sub-Skills</Text>
-                </View>
-                <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.statNumber, { color: colors.tint }]}>
-                    {skills.length > 0
-                      ? Math.round(
-                          skills.reduce((sum, s) => sum + s.overall_mastery, 0) / skills.length
-                        )
-                      : 0}
-                    %
+        {/* Contribution Graph */}
+        <View style={[styles.section, { backgroundColor: colors.surface, marginTop: 10, marginHorizontal: 20, borderRadius: 12, padding: 15 }]}>
+           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10, fontSize: 18, fontWeight: 'bold' }]}>Consistency</Text>
+           <ContributionGraph data={contributions} />
+        </View>
+
+        {/* Stats Row */}
                   </Text>
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Mastery</Text>
                 </View>
@@ -187,11 +210,14 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 2,
+  },
+  section: {
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
