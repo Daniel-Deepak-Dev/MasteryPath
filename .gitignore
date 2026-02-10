@@ -6,6 +6,7 @@ Thumbs.db
 # Editor Directories
 .vscode/
 .idea/
+.sfdx/
 
 # Backend/Frontend specific are handled in their own nested .gitignore files,
 # but adding these globally is safe practice.
