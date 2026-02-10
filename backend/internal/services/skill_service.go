@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"masterypath/internal/apperror"
@@ -16,13 +17,15 @@ import (
 type SkillService struct {
 	skillCollection    *mongo.Collection
 	metadataCollection *mongo.Collection
+	progressCollection *mongo.Collection
 }
 
 // NewSkillService creates a new SkillService with the required collections.
-func NewSkillService(skillCol, metadataCol *mongo.Collection) *SkillService {
+func NewSkillService(skillCol, metadataCol, progressCol *mongo.Collection) *SkillService {
 	return &SkillService{
 		skillCollection:    skillCol,
 		metadataCollection: metadataCol,
+		progressCollection: progressCol,
 	}
 }
 
@@ -275,4 +278,115 @@ func (s *SkillService) Delete(ctx context.Context, id primitive.ObjectID) error 
 		return apperror.Wrap(apperror.ErrInternal, "failed to delete skill")
 	}
 	return nil
+}
+
+// GetDashboard returns all root-level (master) skills with their direct sub-skills
+// and per-sub-skill mastery percentages computed from progress items.
+func (s *SkillService) GetDashboard(ctx context.Context) ([]models.DashboardSkill, error) {
+	// 1. Find all root skills (no parent)
+	rootFilter := bson.M{
+		"$or": bson.A{
+			bson.M{"parent_id": nil},
+			bson.M{"parent_id": bson.M{"$exists": false}},
+		},
+	}
+
+	cursor, err := s.skillCollection.Find(ctx, rootFilter)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.ErrInternal, "failed to fetch root skills")
+	}
+	defer cursor.Close(ctx)
+
+	var rootSkills []models.Skill
+	if err := cursor.All(ctx, &rootSkills); err != nil {
+		return nil, apperror.Wrap(apperror.ErrInternal, "failed to decode root skills")
+	}
+
+	var dashboard []models.DashboardSkill
+
+	for _, root := range rootSkills {
+		// 2. Find direct children of this root
+		childCursor, err := s.skillCollection.Find(ctx, bson.M{"parent_id": root.ID})
+		if err != nil {
+			continue
+		}
+
+		var children []models.Skill
+		if err := childCursor.All(ctx, &children); err != nil {
+			childCursor.Close(ctx)
+			continue
+		}
+		childCursor.Close(ctx)
+
+		var subSkills []models.DashboardSubSkill
+		var totalMastery float64
+
+		for _, child := range children {
+			// 3. Compute mastery for each sub-skill from progress items
+			mastery := computeMastery(ctx, s.progressCollection, child.ID)
+
+			subSkills = append(subSkills, models.DashboardSubSkill{
+				ID:      child.ID,
+				Name:    child.Name,
+				Mastery: mastery,
+			})
+			totalMastery += mastery
+		}
+
+		if subSkills == nil {
+			subSkills = []models.DashboardSubSkill{}
+		}
+
+		var overallMastery float64
+		if len(subSkills) > 0 {
+			overallMastery = totalMastery / float64(len(subSkills))
+		}
+
+		dashboard = append(dashboard, models.DashboardSkill{
+			ID:             root.ID,
+			Name:           root.Name,
+			Category:       root.Category,
+			Description:    root.Description,
+			SubSkills:      subSkills,
+			OverallMastery: math.Round(overallMastery*10) / 10,
+		})
+	}
+
+	if dashboard == nil {
+		dashboard = []models.DashboardSkill{}
+	}
+	return dashboard, nil
+}
+
+// computeMastery calculates the mastery % for a skill based on its progress items.
+// Mastery = (sum of weightage for achieved items) / (sum of all weightage) * 100
+func computeMastery(ctx context.Context, progressCol *mongo.Collection, skillID primitive.ObjectID) float64 {
+	// Get all progress items for this skill
+	cursor, err := progressCol.Find(ctx, bson.M{"parent_skill_id": skillID})
+	if err != nil {
+		return 0
+	}
+	defer cursor.Close(ctx)
+
+	var items []models.ProgressItem
+	if err := cursor.All(ctx, &items); err != nil {
+		return 0
+	}
+
+	if len(items) == 0 {
+		return 0
+	}
+
+	var totalWeight, achievedWeight int
+	for _, item := range items {
+		totalWeight += item.Weightage
+		if item.Achieved {
+			achievedWeight += item.Weightage
+		}
+	}
+
+	if totalWeight == 0 {
+		return 0
+	}
+	return math.Round((float64(achievedWeight)/float64(totalWeight)*100)*10) / 10
 }

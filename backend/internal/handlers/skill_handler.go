@@ -172,3 +172,20 @@ func (h *SkillHandler) DeleteSkill(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"message": "Skill deleted"})
 }
+
+// GetDashboard godoc
+// @Summary Get dashboard data
+// @Description Retrieve all master skills with sub-skills and mastery percentages
+// @Tags skills
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.DashboardSkill
+// @Failure 500 {object} map[string]string
+// @Router /skills/dashboard [get]
+func (h *SkillHandler) GetDashboard(c *fiber.Ctx) error {
+	dashboard, err := h.service.GetDashboard(c.UserContext())
+	if err != nil {
+		return SendError(c, err.(*apperror.AppError))
+	}
+	return c.JSON(dashboard)
+}

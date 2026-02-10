@@ -52,7 +52,7 @@ func main() {
 
 	// 3. Create Services (business logic layer)
 	goalService := services.NewGoalService(db.Collection("goals"))
-	skillService := services.NewSkillService(db.Collection("skills"), db.Collection("metadata"))
+	skillService := services.NewSkillService(db.Collection("skills"), db.Collection("metadata"), db.Collection("progress"))
 	progressService := services.NewProgressService(db.Collection("progress"))
 
 	// 4. Create Handlers (thin HTTP layer)

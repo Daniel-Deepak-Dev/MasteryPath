@@ -15,17 +15,19 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? "light"].surface,
+          borderTopColor: Colors[colorScheme ?? "light"].border,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Goals",
+          title: "Dashboard",
           tabBarIcon: ({ color, focused }) => (
-            // Use the logic from B, but the component from A
             <IconSymbol
               size={28}
-              // If focused, use filled house. If not, use generic house (or whatever the outline name is)
               name={focused ? "house.fill" : "house"}
               color={color}
             />
