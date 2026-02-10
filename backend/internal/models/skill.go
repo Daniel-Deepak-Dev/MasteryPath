@@ -13,6 +13,7 @@ type Skill struct {
 	Category    string               `json:"category,omitempty" bson:"category,omitempty"`
 	Description string               `json:"description" bson:"description"`
 	CreatedAt   time.Time            `json:"created_at" bson:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at" bson:"updated_at"`
 
 	// Pointer allows this to be null
 	ParentID *primitive.ObjectID `json:"parent_id" bson:"parent_id"`

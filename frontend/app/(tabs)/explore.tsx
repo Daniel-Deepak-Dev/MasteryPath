@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, TextInput, Text, View } from 'react-native';
+import { StyleSheet, TextInput, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const InputOutputExample = () => {
   // 1. Create a state variable to hold the input text

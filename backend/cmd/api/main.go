@@ -5,6 +5,10 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -14,6 +18,7 @@ import (
 	"masterypath/internal/database"
 	"masterypath/internal/handlers"
 	"masterypath/internal/routes"
+	"masterypath/internal/services"
 
 	_ "masterypath/docs"
 
@@ -41,34 +46,53 @@ func main() {
 
 	// 2. Connect to Database
 	client := database.ConnectDB(cfg.MongoURI)
-	// Disconnect when main exits
 	defer client.Disconnect(context.Background())
 
-	// 3. Initialize Handler
-	// We inject the specific collection into the handler
-	coll := client.Database("masterypath").Collection("goals")
-	goalHandler := handlers.NewGoalHandler(coll)
+	db := client.Database("masterypath")
 
-	// Skill Handler
-	skillCol := client.Database("masterypath").Collection("skills")
-	metadataCol := client.Database("masterypath").Collection("metadata")
-	skillHandler := handlers.NewSkillHandler(skillCol, metadataCol)
+	// 3. Create Services (business logic layer)
+	goalService := services.NewGoalService(db.Collection("goals"))
+	skillService := services.NewSkillService(db.Collection("skills"), db.Collection("metadata"))
+	progressService := services.NewProgressService(db.Collection("progress"))
 
-	// Progress Handler
-	progressCol := client.Database("masterypath").Collection("progress")
-	progressHandler := handlers.NewProgressHandler(progressCol)
+	// 4. Create Handlers (thin HTTP layer)
+	goalHandler := handlers.NewGoalHandler(goalService)
+	skillHandler := handlers.NewSkillHandler(skillService)
+	progressHandler := handlers.NewProgressHandler(progressService)
 
-	// 4. Setup Fiber App
+	// 5. Setup Fiber App
 	app := fiber.New()
 	app.Use(cors.New())
 
-	// 5. Setup Routes
+	// 6. Setup Routes
 	routes.SetupRoutes(app, goalHandler, skillHandler, progressHandler)
 
-	// Swagger UI
-	app.Get("/swagger/*", swagger.HandlerDefault) // default
+	// Health Check
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":    "ok",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
 
-	// 6. Start Server
+	// Swagger UI
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
+	// 6. Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-quit
+		log.Println("Shutting down server...")
+		if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
+			log.Fatalf("Server forced shutdown: %v", err)
+		}
+	}()
+
+	// 7. Start Server
 	log.Println("Server running on port", cfg.Port)
-	log.Fatal(app.Listen(":" + cfg.Port))
+	if err := app.Listen(":" + cfg.Port); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }

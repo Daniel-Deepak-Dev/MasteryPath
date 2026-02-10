@@ -12,4 +12,5 @@ type Goal struct {
 	Description string             `json:"description" bson:"description"`
 	Completed   bool               `json:"completed" bson:"completed"`
 	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }
