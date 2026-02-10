@@ -1,85 +1,52 @@
-import React, { useState } from 'react';
-import { StyleSheet, TextInput, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
-const InputOutputExample = () => {
-  // 1. Create a state variable to hold the input text
-  const [text, setText] = useState('');
+export default function ExploreScreen() {
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentContainer}>
-
-        {/* Label */}
-        <Text style={styles.label}>Type something below:</Text>
-
-        {/* 2. The Input Field */}
-        <TextInput
-          style={styles.input}
-          onChangeText={(newText) => setText(newText)} // Updates state when typing
-          value={text} // Binds the input value to the state
-          placeholder="Enter text here..."
-          keyboardType="default"
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.content}>
+        <IconSymbol
+            name="paperplane.fill"
+            size={80}
+            color={colors.tint}
+            style={styles.icon}
         />
-
-        {/* 3. The Display Area */}
-        <View style={styles.resultBox}>
-          <Text style={styles.resultLabel}>Live Output:</Text>
-          {/* Display the text state here */}
-          <Text style={styles.resultText}>
-            {text ? text : "Waiting for input..."}
-          </Text>
-        </View>
-
+        <Text style={[styles.title, { color: colors.text }]}>Explore Skills</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Discover new skills and add them to your mastery path. Feature coming soon!
+        </Text>
       </View>
     </SafeAreaView>
   );
-};
+}
 
-// Styles to make it look clean
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
     justifyContent: 'center',
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#333',
-  },
-  input: {
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    backgroundColor: '#fff',
-    fontSize: 16,
-    marginBottom: 30,
-  },
-  resultBox: {
-    backgroundColor: '#e3f2fd', // Light blue background
-    padding: 20,
-    borderRadius: 10,
     alignItems: 'center',
+    padding: 24,
   },
-  resultLabel: {
-    fontSize: 14,
-    color: '#1976d2',
-    fontWeight: 'bold',
-    marginBottom: 5,
+  icon: {
+    marginBottom: 24,
   },
-  resultText: {
-    fontSize: 24,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#1565c0',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 16,
     textAlign: 'center',
+    lineHeight: 24,
   },
 });
-
-export default InputOutputExample;
